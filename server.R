@@ -66,22 +66,31 @@ function(input, output, session) {
       left_join(Tier1_geo,by=c("Km_Werk"))%>%
       left_join(Tier2_geo,by=c("ET_Werk"))
      All_Info$Entfern <- earth.dist(All_Info$ET_L.ngengrad,All_Info$ET_Breitengrad,All_Info$Km_L.ngengrad,All_Info$Km_Breitengrad)
+     
+     # seperate the same ET_Werk number with different ET_Hersteller
+     If_duplicated<- !duplicated(unite(All_Info,new_id,ET_Werk,ET_Hersteller)$new_id) & duplicated(All_Info$ET_Breitengrad)
+
+     All_Info[If_duplicated,"ET_Breitengrad"] <- jitter(All_Info[If_duplicated,"ET_Breitengrad"] , factor = 0.5)
+     All_Info[If_duplicated,"ET_L.ngengrad"] <- jitter(All_Info[If_duplicated,"ET_L.ngengrad"] , factor = 0.5)
+
      All_Info2<- select(All_Info,ET_L.ngengrad,ET_Breitengrad,ET_Werk,ET_Hersteller,Km_Werk,Entfern)
      if (as.numeric(length(levels(factor(All_Info2$Km_Werk))))>1) {
        All_Info2<-All_Info2%>%spread(Km_Werk,Entfern)%>%
       unite(Entfern,5:(4+as.numeric(length(levels(factor(All_Info$Km_Werk))))),sep = " km ,")
      }
      
+   
+     
+     
     # prepare data for ET Werk
     ET_Werk_Info<-final_f%>%
       unite(INFO, ET_Hersteller,ET_Werk, sep=",")
     ET_Werk_Info<- as.data.frame(table(ET_Werk_Info$INFO))%>%
-      separate(Var1, c("ET_Hersteller","ET_Werk"))%>%
-      left_join(Tier2_geo,by=c("ET_Werk"))%>%merge(All_Info2)
+      separate(Var1, c("ET_Hersteller","ET_Werk"))%>%merge(All_Info2)
     
-    ET_Werk_Info$ET_Breitengrad <- jitter(ET_Werk_Info$ET_Breitengrad , factor = 4.0001)
-    ET_Werk_Info$ET_L.ngengrad <- jitter(ET_Werk_Info$ET_L.ngengrad, factor = 4.0001)
-
+  
+    # ET_Werk_Info$ET_L.ngengrad <- jitter(ET_Werk_Info$ET_L.ngengrad, factor = 4.0001)
+   
     # prepare data for Km Werk
     Km_Werk_Info<-left_join(as.data.frame(table(final_f$Km_Werk)),Tier1_geo,by=c("Var1"="Km_Werk"))
 
@@ -107,7 +116,7 @@ function(input, output, session) {
                  weight = 5,
                  opacity = 0.2, 
                  fillOpacity= 0.5, 
-                 fillColor=pal(Km_Werk_Info$Freq),   
+                 fillColor="grey",   
                  popup = paste("TIER1", "<br>",
                                "Hersteller:",input$Km_Hersteller, "<br>",
                                "Werk:", Km_Werk_Info$Var1, "<br>",
@@ -125,6 +134,12 @@ function(input, output, session) {
                                "Zulieferwerk-Entfernung zur Km_Werke", list(levels(factor(All_Info$Km_Werk))), "<br>:",
                                ET_Werk_Info$Entfern,"km"))%>%
       addLegend("bottomleft", pal=pal, values=colorData, title="Volumenstroeme",layerId="colorLegend")
+      
+      for (i in 1:nrow(All_Info)){
+        leafletProxy("map") %>%addPolylines(
+                                           lng = c(All_Info[i,"ET_L.ngengrad"],All_Info[i,"Km_L.ngengrad"]),
+                                           lat = c(All_Info[i,"ET_Breitengrad"],All_Info[i,"Km_Breitengrad"]))
+      }
     
    
   })
