@@ -23,7 +23,7 @@ library(ggplot2)
     a <- (sin(dlat/2))^2 + cos(a1) * cos(b1) * (sin(dlon/2))^2
     c <- 2 * atan2(sqrt(a), sqrt(1 - a))
     R <- 6378.145
-    d <- round(R * c,digits = 1)
+    d <- R * c
     return(d)
   }
  
@@ -59,15 +59,13 @@ function(input, output, session) {
       left_join(Tier1_geo,by=c("Km_Werk"))%>%
       left_join(Tier2_geo,by=c("ET_Werk"))
      All_Info$Entfern <- earth.dist(All_Info$ET_L.ngengrad,All_Info$ET_Breitengrad,All_Info$Km_L.ngengrad,All_Info$Km_Breitengrad)
-     All_Info2<-All_Info %>% select(ET_L.ngengrad,ET_Breitengrad,ET_Werk,ET_Hersteller,Km_Werk,Entfern)%>%
-       spread(Km_Werk,Entfern)
-    All_Info2 <- unite(All_Info2,Entfern,5:(4+as.numeric(length(levels(factor(ET_Werk_Info2$Km_Werk))))),sep = " km ,")
+     # 
     
     ET_Werk_Info<-final_f%>%
       unite(INFO, ET_Hersteller,ET_Werk, sep=",")
     ET_Werk_Info<- as.data.frame(table(ET_Werk_Info$INFO))%>%
       separate(Var1, c("ET_Hersteller","ET_Werk"))%>%
-      left_join(Tier2_geo,by=c("ET_Werk"))%>%merge(All_Info2)
+      left_join(Tier2_geo,by=c("ET_Werk"))
     
     
     ET_Werk_Info$ET_Breitengrad <- jitter(ET_Werk_Info$ET_Breitengrad , factor = 4.0001)
@@ -89,30 +87,15 @@ function(input, output, session) {
 
     leafletProxy("map") %>%
       clearShapes() %>%
-      addCircles(lat = Km_Werk_Info$Km_Breitengrad, 
-                 lng=Km_Werk_Info$Km_L.ngengrad,
-                 radius=15000,stroke=TRUE, 
-                 color = "red", 
-                 weight = 5,
-                 opacity = 0.2, 
-                 fillOpacity= 0.5, 
-                 fillColor=pal(Km_Werk_Info$Freq),   
-                 popup = paste("TIER1", "<br>",
-                               "Hersteller",input$Km_Hersteller, "<br>",
-                               "Werk", Km_Werk_Info$Var1, "<br>",
-                               "Gesamtzahl des Eingangs", Km_Werk_Info$Freq, "<br>" ))%>%
-      addCircles(lat = ET_Werk_Info$ET_Breitengrad, 
-                 lng=ET_Werk_Info$ET_L.ngengrad,
-                 radius=10000,
-                 stroke=FALSE, 
-                 fillOpacity= 0.5, 
-                 fillColor=pal(ET_Werk_Info$Freq),
-                 popup = paste("TIER2", "<br>",
-                               "Hersteller",ET_Werk_Info$ET_Hersteller, "<br>",
-                               "Werk", ET_Werk_Info$ET_Werk, "<br>",
-                               "Gesamtzahl gelieferte Einzelteile", ET_Werk_Info$Freq, "<br>",
-                               "Zulieferwerk-Entfernung zur Km_Werke", list(levels(factor(All_Info$Km_Werk))),
-                               ET_Werk_Info$Entfern,"km"))%>%
+      addCircles(lat = Km_Werk_Info$Km_Breitengrad, lng=Km_Werk_Info$Km_L.ngengrad,radius=15000,stroke=TRUE, color = "red", weight = 5,opacity = 0.2, fillOpacity= 0.5, fillColor=pal(Km_Werk_Info$Freq),   popup = paste("TIER1", "<br>",
+                                                                                                                                                                                                                             "Hersteller",input$Km_Hersteller, "<br>",
+                                                                                                                                                                                                                             "Werk", Km_Werk_Info$Var1, "<br>",
+                                                                                                                                                                                                                             "Gesamtzahl des Eingangs", Km_Werk_Info$Freq, "<br>" ))%>%
+      addCircles(lat = ET_Werk_Info$ET_Breitengrad, lng=ET_Werk_Info$ET_L.ngengrad,radius=10000,stroke=FALSE, fillOpacity= 0.5, fillColor=pal(ET_Werk_Info$Freq),popup = paste("TIER2", "<br>",
+                                                                                                                                                                                  "Hersteller",ET_Werk_Info$ET_Hersteller, "<br>",
+                                                                                                                                                                                  "Werk", ET_Werk_Info$ET_Werk, "<br>",
+                                                                                                                                                                                  "Gesamtzahl gelieferte Einzelteile", ET_Werk_Info$Freq, "<br>",
+                                                                                                                                                                                  "Entfernung"))%>%
       addLegend("bottomleft", pal=pal, values=colorData, title="Volumenstroeme",layerId="colorLegend")
       # addPolylines(lat =unite(All_Info,N_B,Km_Breitengrad, ET_Breitengrad,sep=" ")$n_B, lng=unite(All_Info,N_L, Km_L.ngengrad,ET_L.ngengrad,sep=" ")$n_L)
 
