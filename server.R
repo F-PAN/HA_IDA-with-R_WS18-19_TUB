@@ -136,7 +136,7 @@ function(input, output, session) {
       addLegend("bottomleft", pal=pal, values=colorData, title="Volumenstroeme",layerId="colorLegend")
       
       for (i in 1:nrow(All_Info)){
-        leafletProxy("map") %>%addPolylines(
+        leafletProxy("map") %>%addPolylines(weight=2, color="grey", opacity = 0.4,fillColor = "black", fillOpacity = 0.5, 
                                            lng = c(All_Info[i,"ET_L.ngengrad"],All_Info[i,"Km_L.ngengrad"]),
                                            lat = c(All_Info[i,"ET_Breitengrad"],All_Info[i,"Km_Breitengrad"]))
       }
