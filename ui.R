@@ -5,10 +5,12 @@ library(ggvis)
 
 
 fluidPage(
+  # title
   titlePanel("Liederbeziehung ziwischen TIER1 und TIER2 des OEM1 in DE 2016"),
 
   fluidRow(
     column(8,
+           # add map
            div(class="innen",
 
                tags$head(
@@ -18,36 +20,20 @@ fluidPage(
                ),
                # If not using custom CSS, set height of leafletOutput to a number instead of percent
                leafletOutput("map", width="100%", height="500")
-               # wellPanel(
-               #   span("Number of movies selected:",
-               #        textOutput("n_movies"),
-               #        h2("ZIP explorer"),
-               #        selectInput("states", "States", c("All states"="", structure(state.abb, names=state.name), "Washington, DC"="DC"), multiple=TRUE),
-               #        conditionalPanel("input.states",
-               #                         selectInput("cities", "Cities", c("All cities"=""), multiple=TRUE)
-               #        ),
-               #        conditionalPanel("input.states",
-               #                         selectInput("zipcodes", "Zipcodes", c("All zipcodes"=""), multiple=TRUE)
-               #        ),
-               #        numericInput("minScore", "Min score", min=0, max=100, value=0)
-               #
-               #
-               #
-               #
-               #   ),
-
-
+    
                )
            ),
     column(4,
            wellPanel(
+             # dropdown list
              h4("Filter"),
              selectInput("Km_Hersteller", "Km_Hersteller", levels(final$Km_Hersteller)),
+             
+             # diagramm
              h4("Balkendiagramm"),
              #uiOutput("secondSelection"),
              wellPanel(
                plotOutput("histCentile", height = 250)
-               #plotOutput("scatterCollegeIncome", height = 250)
              )
 
 
@@ -57,6 +43,7 @@ fluidPage(
   ),
   fluidRow(
            hr(),
+           # show data
            DT::dataTableOutput("ziptable")
 
   )

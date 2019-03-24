@@ -7,10 +7,9 @@ library(ggplot2)
 
 # Leaflet bindings are a bit slow; for now we'll just sample to compensate
   set.seed(100)
-#  alldata <- final_new[sample.int(nrow(final_new), 10000),]
-# By ordering by centile, we ensure that the (comparatively rare) SuperZIPs
-# will be drawn last and thus be easier to see
-# zipdata <- zipdata[order(zipdata$centile),]
+
+
+# function to calculation distance according to lat and lng
   earth.dist <- function (long1, lat1, long2, lat2)
   {
     rad <- pi/180
@@ -27,6 +26,7 @@ library(ggplot2)
     return(d)
   }
  
+# main
 function(input, output, session) {
 
   ## Interactive Map ###########################################
@@ -42,20 +42,23 @@ function(input, output, session) {
 
 
   # This observer is responsible for maintaining the circles and legend,
-  # according to the variables the user has chosen to map to color and size.
+  # according to the variables the user has chosen to map to color
   observe({
-
+    
+    # filter data according to Input of dropdown list (Km_Hersteller)
     final_f<-filter(final,Km_Hersteller==input$Km_Hersteller)
      # output$secondSelection <- renderUI({
      #   selectInput("Km_Werk", "Km_Werk", levels(factor(final_f$Km_Werk)))
      # })
      # final_f<-filter(final_f,Km_Werk==as.character(input$Km_Hersteller))
-    # 
+    
+    # prepare data for diagram in form : ET_ID, Km_Werk, Freq
      ET_Info<-final_f%>% 
        unite(INFO, ET_ID,Km_Werk, sep=",")
      ET_Info<-as.data.frame(table(ET_Info$INFO))%>%
        separate(Var1, c("ET_ID","Km_Werk"))
        
+    # join all GEO_Info to calculation distance, 
      All_Info<-final_f%>% 
        unite(INFO, Km_Hersteller,Km_Werk,ET_Hersteller,ET_Werk, sep=",")
      All_Info<- as.data.frame(table(All_Info$INFO))%>%
@@ -64,27 +67,29 @@ function(input, output, session) {
       left_join(Tier2_geo,by=c("ET_Werk"))
      All_Info$Entfern <- earth.dist(All_Info$ET_L.ngengrad,All_Info$ET_Breitengrad,All_Info$Km_L.ngengrad,All_Info$Km_Breitengrad)
      All_Info2<- select(All_Info,ET_L.ngengrad,ET_Breitengrad,ET_Werk,ET_Hersteller,Km_Werk,Entfern)
-     if (as.numeric(length(levels(factor(ET_Werk_Info2$Km_Werk))))>1) {
+     if (as.numeric(length(levels(factor(All_Info2$Km_Werk))))>1) {
        All_Info2<-All_Info2%>%spread(Km_Werk,Entfern)%>%
       unite(Entfern,5:(4+as.numeric(length(levels(factor(All_Info$Km_Werk))))),sep = " km ,")
      }
      
+    # prepare data for ET Werk
     ET_Werk_Info<-final_f%>%
       unite(INFO, ET_Hersteller,ET_Werk, sep=",")
     ET_Werk_Info<- as.data.frame(table(ET_Werk_Info$INFO))%>%
       separate(Var1, c("ET_Hersteller","ET_Werk"))%>%
       left_join(Tier2_geo,by=c("ET_Werk"))%>%merge(All_Info2)
     
-    
     ET_Werk_Info$ET_Breitengrad <- jitter(ET_Werk_Info$ET_Breitengrad , factor = 4.0001)
     ET_Werk_Info$ET_L.ngengrad <- jitter(ET_Werk_Info$ET_L.ngengrad, factor = 4.0001)
 
+    # prepare data for Km Werk
     Km_Werk_Info<-left_join(as.data.frame(table(final_f$Km_Werk)),Tier1_geo,by=c("Var1"="Km_Werk"))
 
-    
+    # set color scales based on the volumn of each ET_Werk
     colorData <- min(ET_Werk_Info$Freq):max(ET_Werk_Info$Freq)
     pal <- colorNumeric("viridis", colorData)
     
+    # ET_ID diagram
     output$histCentile <- renderPlot({
       ggplot(ET_Info, aes(x=ET_ID, y=Freq,fill = Km_Werk)) +
         geom_bar(stat="identity")+
@@ -92,7 +97,7 @@ function(input, output, session) {
       })
 
     
-
+    # draw components on map
     leafletProxy("map") %>%
       clearShapes() %>%
       addCircles(lat = Km_Werk_Info$Km_Breitengrad, 
@@ -117,7 +122,7 @@ function(input, output, session) {
                                "Hersteller:",ET_Werk_Info$ET_Hersteller, "<br>",
                                "Werk:", ET_Werk_Info$ET_Werk, "<br>",
                                "Gesamtzahl gelieferte Einzelteile:", ET_Werk_Info$Freq, "<br>",
-                               "Zulieferwerk-Entfernung zur Km_Werke", list(levels(factor(All_Info$Km_Werk))), ":<br>",
+                               "Zulieferwerk-Entfernung zur Km_Werke", list(levels(factor(All_Info$Km_Werk))), "<br>:",
                                ET_Werk_Info$Entfern,"km"))%>%
       addLegend("bottomleft", pal=pal, values=colorData, title="Volumenstroeme",layerId="colorLegend")
     
@@ -125,11 +130,7 @@ function(input, output, session) {
   })
 
   
-  
-  
-
-  ## Data Explorer ###########################################
-
+  #show the Data after filtering by Km_Hersteller
   output$ziptable <- DT::renderDataTable({filter(final, Km_Hersteller==input$Km_Hersteller)
    
   })
